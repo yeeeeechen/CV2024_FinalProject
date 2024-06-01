@@ -8,7 +8,7 @@ import cv2
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import numpy as np
-import torchvision.transforms as transforms
+from torchvision.transforms import v2 as transforms
 
 from model import FastRCNN
 from tqdm import tqdm
@@ -17,7 +17,10 @@ from dataset import get_dataloader
 def video_inference(VIDEO_PATH, OUTPUT_PATH, model, device, threshold=0.85):
     print(f"input: {VIDEO_PATH}")
     print(f"write to: {OUTPUT_PATH}\n")
+
+    model.eval()
     
+    # get video data
     video = cv2.VideoCapture(VIDEO_PATH)
     film_frame_count = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
     film_h, film_w = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -25,7 +28,14 @@ def video_inference(VIDEO_PATH, OUTPUT_PATH, model, device, threshold=0.85):
     # fourcc = cv2.VideoWriter_fourcc(*'DIVX')
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     videowriter = cv2.VideoWriter(OUTPUT_PATH, fourcc, film_fps, (film_w, film_h))
-    model.eval()
+
+    # define transform
+    transform = transforms.Compose([
+        transforms.ToImage(),
+        transforms.ToDtype(torch.float, scale=True),
+        # transforms.ToPureTensor()
+    ])
+
     pbar = tqdm(total = film_frame_count)
     while (video.isOpened()):
         ret, frame = video.read()
@@ -33,11 +43,7 @@ def video_inference(VIDEO_PATH, OUTPUT_PATH, model, device, threshold=0.85):
 
             # convert to torch tensor
             color_converted = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            # print(np.shape(color_converted))
-            t = transforms.Compose([transforms.ToTensor()])
-            image_tensor = t(color_converted)
-            # image_tensor = torch.tensor(color_converted, dtype=torch.float32)
-            # print(image_tensor.size())
+            image_tensor = transform(color_converted)
 
             images = [image_tensor.to(device)]
             with torch.no_grad():
@@ -88,7 +94,7 @@ def main():
     print('Device:', device)
 
     model = FastRCNN()
-    model.load_state_dict(torch.load('./checkpoint/model_best_v2.pth', map_location=torch.device('cpu')))
+    model.load_state_dict(torch.load('./checkpoint/model_best.pth', map_location=torch.device('cpu')))
     model.to(device)
 
     inputList = ['train/01.mp4', 'train/02.mp4', 'train/03.mp4', 'test/01.mp4', 'test/03.mp4', 'test/05.mp4', 'test/07.mp4', 'test/09.mp4']
