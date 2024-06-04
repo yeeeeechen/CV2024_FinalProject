@@ -68,10 +68,9 @@ def get_dataloader(dataset_dir, batch_size=1, split='train'):
         transform = transforms.Compose([
             transforms.RandomHorizontalFlip(0.5),
             transforms.RandomVerticalFlip(0.5),
-            # transforms.RandomRotation(degrees=180),
-            transforms.RandomPerspective(distortion_scale=0.3),
-
-            # transforms.ToTensor(),
+            transforms.RandomApply([transforms.RandomRotation(degrees=(90, 90))], p=0.5),
+            # transforms.RandomPerspective(distortion_scale=0.3),
+            # transforms.Grayscale(),
 
             transforms.ToDtype(torch.float, scale=True),
             transforms.ToPureTensor()
@@ -79,7 +78,7 @@ def get_dataloader(dataset_dir, batch_size=1, split='train'):
         ])
     else: # 'val' or 'test'
         transform = transforms.Compose([
-            # transforms.ToTensor(),
+            # transforms.Grayscale(),
             transforms.ToDtype(torch.float, scale=True),
             transforms.ToPureTensor()
             # transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])

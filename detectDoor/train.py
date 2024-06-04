@@ -15,7 +15,7 @@ from model import FastRCNN
 from dataset import get_dataloader
 from utils import set_seed, write_config_log, write_result_log
 
-def visualize_prediction(model, data_loader, device, threshold=0.7):
+def visualize_prediction(model, data_loader, device, threshold=0.9):
     
     model.eval()
 
@@ -34,62 +34,35 @@ def visualize_prediction(model, data_loader, device, threshold=0.7):
 
         with torch.no_grad():
             predictions = model(images)
-        
-
 
         # Get the predictions
         prediction = predictions[0]
         boxes = prediction['boxes'].cpu().numpy()
         labels = prediction['labels'].cpu().numpy()
         scores = prediction['scores'].cpu().numpy()
-
-        # Filter out predictions below the threshold
-        # high_score_indices = scores >= threshold
-        high_score_indices = np.argmax(scores)
-        box = boxes[high_score_indices]
-        label = labels[high_score_indices]
-        score = scores[high_score_indices]
-
-
-        # for box, label, score in zip(boxes, labels, scores):
-        #     xmin, ymin, xmax, ymax = box
-        #     rect = patches.Rectangle((xmin, ymin), xmax - xmin, ymax - ymin, linewidth=2, edgecolor='r', facecolor='none')
-        #     ax.add_patch(rect)
-        #     ax.text(xmin, ymin - 10, f'{label}: {score:.2f}', color='red', fontsize=12, backgroundcolor='white')
-   
-
-        # for box in prediction['boxes']:
-        #     xmin, ymin, xmax, ymax = box
-        #     rect = plt.Rectangle((xmin, ymin), xmax-xmin, ymax-ymin, fill=False, color='red', linewidth=2)
-        #     ax.add_patch(rect)
         
         # visualize
         fig, ax = plt.subplots()
         image = images[0].cpu().numpy().transpose(1, 2, 0)
         ax.imshow(image)
 
-        xmin, ymin, xmax, ymax = box
-        rect = patches.Rectangle((xmin, ymin), xmax - xmin, ymax - ymin, linewidth=2, edgecolor='r', facecolor='none')
-        ax.add_patch(rect)
-        ax.text(xmin, ymin - 10, f'{label}: {score:.2f}', color='red', fontsize=12, backgroundcolor='white')
+        # Filter out predictions below the threshold
+        t = threshold
+        # t = np.max(scores)
+        high_score_indices = (scores >= t)
+        # high_score_indices = np.argmax(scores)
+        good_boxes = boxes[high_score_indices]
+        good_labels = labels[high_score_indices]
+        good_scores = scores[high_score_indices]
+
+        for box, label, score in zip(good_boxes, good_labels, good_scores):
+            xmin, ymin, xmax, ymax = box
+            rect = patches.Rectangle((xmin, ymin), xmax - xmin, ymax - ymin, linewidth=2, edgecolor='r', facecolor='none')
+            ax.add_patch(rect)
+            ax.text(xmin, ymin - 10, f'{label}: {score:.2f}', color='red', fontsize=12, backgroundcolor='white')
+
         ax.axis('off')
         plt.savefig(f"test_{i}.png")
-
-    
-    
-    # for i, image in enumerate(images):
-    #     image = image.cpu().numpy().transpose(1, 2, 0)
-    #     axs[i].imshow(image)
-        
-    #     for box in predictions[i]['boxes']:
-    #         xmin, ymin, xmax, ymax = box
-    #         rect = plt.Rectangle((xmin, ymin), xmax-xmin, ymax-ymin, fill=False, color='red', linewidth=2)
-    #         axs[i].add_patch(rect)
-        
-    #     axs[i].axis('off')
-    
-    # plt.show()
-    # plt.savefig("test.png")
 
 
 def train(model, train_loader, val_loader, logfile_dir, model_save_dir, optimizer, scheduler, device):
